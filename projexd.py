@@ -191,6 +191,30 @@ def draw_player_status(screen, player, x, y,current):
     screen.blit(life_text, (x, y))
     screen.blit(mana_text, (x, y + 30))
     screen.blit(go_text, (x, y + 60))
+
+class StartScreen:
+    def __init__(self, screen):
+        self.screen = screen
+        self.font_big = pygame.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 60)
+        self.font_small = pygame.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 30)
+
+    def run(self):
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    return  # クリックされたら抜けてゲーム開始
+
+            self.screen.fill((0,0,0))
+            title = self.font_big.render("Kokaton Master's", True, (255,255,255))
+            msg = self.font_small.render("Click to Start", True, (255,255,255))
+            self.screen.blit(title, (SCREEN_WIDTH//2 - title.get_width()//2, SCREEN_HEIGHT//2 - 50))
+            self.screen.blit(msg, (SCREEN_WIDTH//2 - msg.get_width()//2, SCREEN_HEIGHT//2 + 50))
+
+            pygame.display.flip()
+
 # --- メインゲームループ ---
 def run_game():
     game = Game()
@@ -307,4 +331,6 @@ def run_game():
     sys.exit()
 
 if __name__ == '__main__':
-    run_game() 
+    st = StartScreen(screen)
+    st.run()
+    run_game()
