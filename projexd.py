@@ -7,12 +7,12 @@ SCREEN_HEIGHT = 720
 # --- 1. Card Class ---
 class Card:
     """カードの基本情報"""
-    def __init__(self, id, name, attack, cost, img,type):
+    def __init__(self, id, name, attack, cost, img,type,power):
         self.id = id
         self.name = name
         self.attack = attack        # アタック値
         self.cost = cost     # マナコスト 
-        self.power = 1000 * cost # パワー
+        self.power = power # パワー
         self.img = img # 画像名
         self.type = type # カードタイプ
 
@@ -81,11 +81,11 @@ class Game:
     def __init__(self):
         # カード定義の例 (実際のゲームではより複雑)
         CARD_PROTOTYPES = [
-            Card(1, "こうかーん", 7, 6,"","C"),  # id,name,attack,cost,img,type
-            Card(2, "ボーグとん", 1, 2,"","C"),
-            Card(3, "ハルカとん", 1, 3,"","C"),
-            Card(4, "闇鎧亜",2, 4,"","C"),
-            Card(5,"鳥鍋祭り",0,5,"","M"),
+            Card(1, "こうかーん", 7, 6,"fig/こうかーん.jpg","C",6000),  # id,name,attack,cost,img,type
+            Card(2, "ボーグとん", 1, 2,"fig/ボーグとん.jpg","C",2000),
+            Card(3, "ハルカとん", 1, 3,"fig/ハルカとん.png","C",3000),
+            Card(4, "アルカとん",2, 5,"fig/アルカとん.jpg","C",2000),
+            Card(5,"鳥鍋祭り",0,4,"fig/鳥鍋こうかとん.png","M",0),
         ]
         
         self.player1 = Player(is_player1=True)
@@ -136,30 +136,76 @@ class Game:
         player.max_mana = min(player.max_mana + 1, 10) # 例として最大マナを10に設定
         player.mana = player.max_mana
         
-        # ドロー (先攻1ターン目以外)
-        if self.turn_count >= 1 or (self.turn_count == 1 and self.current_turn_player == self.player2):
-            if not player.draw_card():
-                # ドロー失敗で山札切れ負け
-                return self.check_win_condition() 
-
         # クリーチャーのフラグ更新
         for creature in player.field:
             creature.is_tapped = False
             creature.can_attack_this_turn = True 
-            
-        self.game_state = 'MAIN_PHASE'
+
+        # ドロー (先攻1ターン目以外)
+        if self.turn_count >= 1 or (self.turn_count == 1 and self.current_turn_player == self.player2):
+            if not player.draw_card():
+                # ドロー失敗で山札切れ負け
+                if player == self.player1:
+                    return "Player 2 Win (Deck Out)"
+                else:
+                    return "Player 1 Win (Deck Out)"
         
+        self.game_state = 'MAIN_PHASE'
         return self.check_win_condition()
 
     def check_win_condition(self):
         """勝利条件のチェック"""
         if self.player1.life <= 0: # 山札切れ敗北の機能追加が必要
-            return "Player 2 Win (Life 0)"
+            return "Player 2 Win"
         if self.player2.life <= 0:
-            return "Player 1 Win (Life 0)"
+            return "Player 1 Win"
         # 実際にはドロー時の山札切れチェックも必要
         return None
     
+class StartScreen:
+    def __init__(self, screen):
+        self.screen = screen
+        self.font_big = pygame.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 60)
+        self.font_small = pygame.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 30)
+
+    def run(self):
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    return  # クリックされたら抜けてゲーム開始
+
+            self.screen.fill((0,0,0))
+            title = self.font_big.render("Kokaton Master's", True, (255,255,255))
+            msg = self.font_small.render("Click to Start", True, (255,255,255))
+            self.screen.blit(title, (SCREEN_WIDTH//2 - title.get_width()//2, SCREEN_HEIGHT//2 - 50))
+            self.screen.blit(msg, (SCREEN_WIDTH//2 - msg.get_width()//2, SCREEN_HEIGHT//2 + 50))
+
+            pygame.display.flip()
+
+class ResultScreen:
+    def __init__(self, screen):
+        self.screen = screen
+        self.font_big = pygame.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 60)
+        self.font_small = pygame.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 30)
+
+    def run(self, result_message):
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    return # クリックでリザルト画面を終了
+            self.screen.fill((0,0,0))
+            title = self.font_big.render("Game End", True, (255,255,255))
+            msg = self.font_small.render(result_message, True, (255,255,255))
+            self.screen.blit(title, (SCREEN_WIDTH//2 - title.get_width()//2, SCREEN_HEIGHT//2 - 50))
+            self.screen.blit(msg, (SCREEN_WIDTH//2 - msg.get_width()//2, SCREEN_HEIGHT//2 + 50))                
+                    
+            pygame.display.flip()
 def battle(attacker, enemy, attack_player, def_player):  # 追加機能４
     """
     バトルの処理をする関数
@@ -248,6 +294,7 @@ BLUE = (50, 50, 200)
 GREEN = (100,200,100)
 YELLOW = (150,150,50)
 FONT = pygame.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 20)
+FONT_FLAME = pygame.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 21)
 
 #BGMファイル名
 BGM_NORMAL = "Noesis.mp3"
@@ -263,23 +310,51 @@ def start_bgm(file_path):
 # --- 描画ユーティリティ関数 ---
 def draw_card_on_screen(screen, card_obj, x, y, is_creature=False, is_tapped=False):
     """カードを画面に描画する（簡略化された四角形）"""
-    card_rect = pygame.Rect(x, y, 100, 140) 
+    card_rect = pygame.Rect(x, y, 100, 140)
+
     
     # 基本の描画
-    color = BLUE if not is_creature else (100, 200, 200)
+    if is_creature:
+        if card_obj.card.id == 1 or card_obj.card.id == 2 or card_obj.card.id == 4:
+            img = pygame.image.load(card_obj.card.img)
+            img = pygame.transform.rotozoom(img,0,0.2)
+            screen.blit(img,card_rect)
+        else:
+            img = pygame.image.load(card_obj.card.img)
+            img = pygame.transform.rotozoom(img,0,0.25)
+            screen.blit(img,card_rect)
+    else:
+        if(card_obj.id == 1 or card_obj.id == 2 or card_obj.id == 4):
+            img = pygame.image.load(card_obj.img)
+            img = pygame.transform.rotozoom(img,0,0.2)
+            screen.blit(img,card_rect)
+        else:
+            img = pygame.image.load(card_obj.img)
+            img = pygame.transform.rotozoom(img,0,0.25)
+            screen.blit(img,card_rect)
     if is_tapped:
         color = (150, 150, 150) # タップしている場合は灰色に
-    pygame.draw.rect(screen, color, card_rect, border_radius=5)
-    
+        tap_img = pygame.Surface((100,140))
+        pygame.draw.rect(tap_img, color,pygame.Rect(0,0,100,140))
+        tap_img.set_alpha(160)
+        screen.blit(tap_img, card_rect)
     # 情報の描画
-    name_surf = FONT.render(card_obj.card.name if is_creature else card_obj.name, True, BLACK)
-    attack_surf = FONT.render(f"A:{card_obj.card.attack if is_creature else card_obj.attack}", True, RED)
+    name_surf = FONT.render(card_obj.card.name if is_creature else card_obj.name, True, WHITE)
+    name_flame = FONT_FLAME.render(card_obj.card.name if is_creature else card_obj.name, True, BLACK)
+    attack_surf = FONT.render(f"A:{card_obj.card.attack if is_creature else card_obj.attack}", True, WHITE)
+    attack_flame = FONT_FLAME.render(f"A:{card_obj.card.attack if is_creature else card_obj.attack}", True, BLACK)
     cost_surf = FONT.render(f"C:{card_obj.card.cost if is_creature else card_obj.cost}", True, WHITE)
+    cost_flame = FONT_FLAME.render(f"C:{card_obj.card.cost if is_creature else card_obj.cost}", True, BLACK)
     power_surf = FONT.render(f"P:{card_obj.card.power if is_creature else card_obj.power}", True, WHITE)
+    power_flame = FONT_FLAME.render(f"P:{card_obj.card.power if is_creature else card_obj.power}", True, BLACK)
 
+    screen.blit(name_flame, (x + 5, y + 50))
     screen.blit(name_surf, (x + 5, y + 50))
+    screen.blit(attack_flame, (x + 70, y + 110))
     screen.blit(attack_surf, (x + 70, y + 110))
+    screen.blit(cost_flame, (x + 5, y + 5))
     screen.blit(cost_surf, (x + 5, y + 5))
+    screen.blit(power_flame, (x + 5, y + 110))
     screen.blit(power_surf, (x + 5, y + 110))
 
     return card_rect # クリック判定用にRectを返す
@@ -297,6 +372,7 @@ def draw_player_status(screen, player, x, y,current):
         go_text = FONT.render(player.go, True, RED)
     else:
         go_text = FONT.render(player.go, True, WHITE)
+
     screen.blit(player_text, (x, y - 30))
     screen.blit(deck_text, (x, y))
     screen.blit(life_text, (x, y + 30))
@@ -312,7 +388,8 @@ def run_game():
     attack_card = None
     enemy_card = None
     target_card = None
-
+    result = None
+    
     #BGMの再生
     try:
         start_bgm(BGM_NORMAL)
@@ -344,7 +421,8 @@ def run_game():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            
+                result = "Quit" # 終了理由を設定
+
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pos = event.pos
                 
@@ -354,8 +432,8 @@ def run_game():
                     result = game.next_turn()
                     game.game_state = 'MAIN_PHASE'
                     if result:
-                        print(f"Game Over: {result}")
                         running = False
+
                 # --- カード使用ボタンの判定 ---
                 if game.game_state == 'MAIN_PHASE':
                     use_card_rect = pygame.Rect(30, SCREEN_HEIGHT // 2 - 25, 120, 50)
@@ -473,11 +551,24 @@ def run_game():
         screen.blit(end_text, (end_turn_rect.x + 10, end_turn_rect.y + 15))
 
         pygame.display.flip()
-        if game.check_win_condition() != None:
-            print(f"Game Over: {result}")
+        
+        # ループ内での勝利条件チェック (攻撃後のライフ減少に対応)
+        if not result:
+            result = game.check_win_condition()
+            
+        if result:
             running = False
+
+    # メインループ終了後、リザルト画面を表示
+    if result:
+        re = ResultScreen(screen)
+        re.run(result)
+
+    
     pygame.quit()
     sys.exit()
 
 if __name__ == '__main__':
-    run_game() 
+    st = StartScreen(screen)
+    st.run()
+    run_game()
